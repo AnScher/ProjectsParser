@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import json
+import logging
 
 """ 1. Загружаем книгу, каждый лист кладем в отдельную переменную (циклом)
     2. Нужна проверка содержимого на наличие лидинг пробелов, запрещенных символов, дублей в id, проверка макс.длины поля
@@ -15,13 +16,22 @@ ProjectIdBySheetName = {"4891": "2000328.json",
                         "4894": "2000330.json",
                         "4895": "2000331.json",
                         "4896": "2000332.json",
-                        "4897": "2000333.json"
+                        "4897": "2000333.json",
+                        "7777": "2000334.json"
                         }
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler("projects_parser.log")
+file_handler.setLevel(logging.DEBUG)
+file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+file_handler.setFormatter(file_formatter)
+logger.addHandler(file_handler)
 
 
 class Button:
     def __init__(self, service_id, description, value):
-        self.service_id = [number for number, value in enumerate(service_id, start=1)]  # Делаем список номеров(позиций) кнопок в проекте. В каждом экземпляре они должны начинаться с 1
+        self.service_id = [number for number, value in enumerate(service_id,
+                                                                 start=1)]  # Делаем список номеров(позиций) кнопок в проекте. В каждом экземпляре они должны начинаться с 1
         self.description = list(description)
         self.value = list(service_id)
         self.denied_chars = []
@@ -39,6 +49,7 @@ class Controller:
         self.project_ids = []
 
     def run(self):
+        logger.debug("Запуск скрипта")
         button_info = self._load_excel_book(self.excel_file_name)
         json_projects = self._load_project_from_pc(button_info)
         self._dump_projects(json_projects)
@@ -49,7 +60,11 @@ class Controller:
         :param pd_data_frame: Экземпляр класса Pd.DataFrame
         :return: Возвращает экземплят класса Button
         """
-        return Button(pd_data_frame["ID"], pd_data_frame["SERVICE"], pd_data_frame["PRICE"])
+        try:
+            return Button(pd_data_frame["ID"], pd_data_frame["SERVICE"], pd_data_frame["PRICE"])
+        except Exception as e:
+            logger.debug(pd_data_frame)
+            logger.error(e)
 
     def _load_excel_book(self, excel_file_name):
         """
@@ -75,6 +90,7 @@ class Controller:
             return zip(self.project_ids, button_info_list)
 
         except FileNotFoundError as ex:
+            logger.error("Не найден файл excel-книги!")
             print("Не найден файл excel-книги!")
 
     def _generate_button_info_from_file(self, button_info):
@@ -114,5 +130,5 @@ class Controller:
 
 
 if __name__ == '__main__':
-    controller = Controller("1.xlsx")
+    controller = Controller("2.xlsx")
     controller.run()
